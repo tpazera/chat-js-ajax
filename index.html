@@ -1,0 +1,147 @@
+<html>
+<head>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="style.css" rel="stylesheet" type="text/css" />
+<link href="libs/jquery.cssemoticons.css" media="screen" rel="stylesheet" type="text/css" />
+<script src="libs/jquery.cssemoticons.js" type="text/javascript"></script>
+<link href="libs/tinyscrollbar.css" media="screen" rel="stylesheet" type="text/css" />
+<script src="libs/jquery.tinyscrollbar.js" type="text/javascript"></script>
+<script>
+function start() {
+	$("#scrollbar1").tinyscrollbar();
+	maxId = 0;
+	$.ajax({
+		url: "maxID.php",
+		success: function(data){
+			maxId = data;
+			console.log(maxId);
+		}
+	})
+	document.getElementsByClassName("overview")[0].innerHTML = null;
+	name = prompt("Podaj nick: ", "Tomek");
+	document.getElementById("hello").innerHTML = "Witaj <span id='name'>" + name + "</span>!";
+	document.getElementsByClassName("overview")[0].innerHTML = "<span class='admin' style='color: #a00000; font-style: italic;'><strong>Komendy:</strong> /help   /color <small>&lt;color&gt;</small>   /name <small>&lt;name&gt;</small>   /clear   /exit</span><br /> ";
+	getRandomColor();
+	poll();
+}
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF'.split('');
+    color = '#';
+    for (var i = 0; i < 6; i++ ) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    document.getElementById("name").style.color = color;
+}
+
+function poll(){
+	$.ajax({
+		url: "download.php",
+		data: { maxid: maxId },
+		success: function(data){
+			if (data != null && data != "") {
+				db = JSON.parse(data);
+				txt = "";
+				for (i = 0; i < db.length; i++) {
+					var date = db[i][3];
+					var time = date.slice(11,16);
+					txt += "[" + time + "]<<span style='color: " + db[i][2] + "'>@" + db[i][1] + "</span>>" + " <span class='comment'>" + db[i][4] + "</span><br />";
+					var $scrollbar1 = $("#scrollbar1");
+					$scrollbar1.tinyscrollbar();
+					document.getElementsByClassName("overview")[0].innerHTML += txt;
+					var scrollbar1 = $scrollbar1.data("plugin_tinyscrollbar")
+					scrollbar1.update();
+					$('.comment').emoticonize();
+					maxId = db[i][0];
+				}
+			}
+		},
+		complete: poll,
+	})
+}
+
+
+function send() {
+	text = document.getElementById("send").value;
+	if (text.slice(0,1) != "/") {
+		d = new Date();
+		date = d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate() + " " + d.getHours().padLeft() + ":" + d.getMinutes().padLeft() + ":" + d.getSeconds().padLeft();
+		$.ajax({
+			url: "send.php",
+			data: {
+				name: name,
+				color: color,
+				date: date,
+				text: text
+			},
+			success: function(data){
+				console.log(data);
+				maxId = data;
+			}
+		})
+	} else if (text.slice(0,5) == "/help") {
+		document.getElementsByClassName("overview")[0].innerHTML += "<span class='admin' style='color: #a00000; font-style: italic;'><strong>Komendy:</strong> /help   /color <small>&lt;color&gt;</small>   /name <small>&lt;name&gt;</small>   /clear   /exit</span><br /> ";
+	} else if (text.slice(0,6) == "/color") {
+		tmp = text.slice(7,text.length);
+		console.log(tmp);
+		if (tmp.slice(0,1) == "#" && tmp.length == 7) {
+			color = tmp;
+			document.getElementById("name").style.color = color;
+			document.getElementsByClassName("overview")[0].innerHTML += "<span class='admin' style='color: #009900; font-style: italic;'>Zmieniono kolor na <span style='color: " + color + "'>" + color +"</span></span><br />";
+		} else if (tmp == "black" || tmp == "gray" || tmp == "maroon"  || tmp == "red"  || tmp == "purple"  || tmp == "green"  || tmp == "lime"  || tmp == "yellow"  || tmp == "blue"  || tmp == "aqua") {
+			color = tmp;
+			document.getElementById("name").style.color = color;
+			document.getElementsByClassName("overview")[0].innerHTML += "<span class='admin' style='color: #009900; font-style: italic;'>Zmieniono kolor na <span style='color: " + color + "'>" + color +"</span></span><br />";
+		} else {
+			document.getElementsByClassName("overview")[0].innerHTML += "<span class='admin' style='color: #a00000; font-style: italic;'>Błędne użycie komendy. Użyj np: /color #a00000 lub /color <kolor>. Dostępne kolory: black, gray, maroon, red, purple, green, lime, yellow, blue, aqua</span><br />";
+		}
+	} else if (text.slice(0,5) == "/name") {
+		tmp = text.slice(6,text.length);
+		name = tmp;
+		document.getElementById("hello").innerHTML = "Witaj <span id='name'>" + name + "</span>!";
+		document.getElementById("name").style.color = color;
+		document.getElementsByClassName("overview")[0].innerHTML += "<span class='admin' style='color: #009900; font-style: italic;'>Zmieniono nick na <span style='color: " + color + "'>" + name +"</span></span><br />";
+	} else if (text.slice(0,6) == "/clear") {
+		document.getElementsByClassName("overview")[0].innerHTML = "";
+	} else if (text.slice(0,5) == "/exit") {
+		location.reload();
+	} else {
+		document.getElementsByClassName("overview")[0].innerHTML += "<span class='admin' style='color: #a00000; font-style: italic;'>Komenda nie istnieje</span><br />";
+	}
+	
+	document.getElementById("send").value = "";
+}
+
+function presskey(e){
+	switch(e.keyCode) {
+		case 13:
+			send();
+			break;
+	}
+}
+
+Number.prototype.padLeft = function(base,chr){
+   var  len = (String(base || 10).length - String(this).length)+1;
+   return len > 0? new Array(len).join(chr || '0')+this : this;
+}
+
+</script>
+</head>
+<body onload="start()" onkeydown="presskey(event);" >
+<div id="logo">
+	<h1>Czat by Tomasz Pazera</h1>
+	<hr />
+	<h3 id="hello"></h3>
+</div>
+<div id="scrollbar1">
+	<div class="scrollbar"><div class="track"><div class="thumb"><div class="end"></div></div></div></div>
+	<div class="viewport">
+		<div class="overview">
+		</div>
+	</div>
+</div>
+<input type="text" id="send" />
+<div onclick="send()" id="sendButton">Send</div>
+</body>
+</html>
